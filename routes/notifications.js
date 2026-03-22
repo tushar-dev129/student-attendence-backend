@@ -8,9 +8,9 @@ const {
 } = require('../controllers/notificationController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
-router.post('/', protect, authorize('admin'), createNotification);
+router.post('/', protect, authorize('admin', 'professor'), createNotification);
 router.get('/', protect, getNotifications);
-router.get('/admin', protect, authorize('admin'), getAdminNotifications);
-router.delete('/:id', protect, authorize('admin'), deleteNotification);
+router.get('/admin', protect, authorize('admin', 'professor'), getAdminNotifications);
+router.delete('/:id', protect, authorize('admin', 'professor'), deleteNotification);
 
 module.exports = router;

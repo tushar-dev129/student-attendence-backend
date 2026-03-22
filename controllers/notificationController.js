@@ -1,5 +1,7 @@
 const Notification = require('../models/Notification');
 const Student = require('../models/Student');
+const Professor = require('../models/Professor');
+const Course = require('../models/Course');
 
 // @desc    Create new notification
 // @route   POST /api/notifications
@@ -52,7 +54,23 @@ exports.getNotifications = async (req, res) => {
 // @access  Private/Admin
 exports.getAdminNotifications = async (req, res) => {
     try {
-        const notifications = await Notification.find()
+        let query = {};
+        if (req.user.role === 'professor') {
+            const professor = await Professor.findOne({ userId: req.user._id });
+            if (professor) {
+                const course = await Course.findOne({ name: professor.department });
+                if (course) {
+                    query = {
+                        $or: [
+                            { audience: 'all' },
+                            { audience: 'course', courseId: course._id }
+                        ]
+                    };
+                }
+            }
+        }
+
+        const notifications = await Notification.find(query)
             .populate('courseId', 'name')
             .sort({ createdAt: -1 });
 
@@ -67,10 +85,16 @@ exports.getAdminNotifications = async (req, res) => {
 // @access  Private/Admin
 exports.deleteNotification = async (req, res) => {
     try {
-        const notification = await Notification.findByIdAndDelete(req.params.id);
+        const notification = await Notification.findById(req.params.id);
         if (!notification) {
             return res.status(404).json({ success: false, error: 'Notification not found' });
         }
+
+        if (req.user.role !== 'admin' && notification.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, error: 'Not authorized to delete this notification' });
+        }
+
+        await notification.deleteOne();
         res.status(200).json({ success: true, data: {} });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
